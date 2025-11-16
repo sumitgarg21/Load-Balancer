@@ -8,6 +8,10 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"os"
+	"strings"
+	"github.com/joho/godotenv"
 )
 
 func createBackend(rawURL string) *Backend {
@@ -22,10 +26,28 @@ func createBackend(rawURL string) *Backend {
 func main() {
 	InitMetrics() 	
 
-	backends := []*Backend{
-		createBackend("http://localhost:8081"),
-		createBackend("http://localhost:8082"),
-		createBackend("http://localhost:8083"),
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
+	backendEnv := os.Getenv("BACKENDS")
+	port := os.Getenv("PORT")
+
+	if backendEnv == "" {
+		log.Fatal("ERROR: BACKENDS not set in .env file")
+	}
+	if port == "" {
+		port = "8080" // default
+	}
+
+	// Split comma separated list
+	backendURLs := strings.Split(backendEnv, ",")
+
+	// Create backend objects
+	backends := []*Backend{}
+	for _, url := range backendURLs {
+		backends = append(backends, createBackend(url))
 	}
 
 	lb := &LoadBalancer{Backends: backends}
@@ -51,6 +73,6 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/", rl.Limit(http.HandlerFunc(lbHandler(lb))))
 
-	log.Println("Load Balancer running on :8000")
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	log.Println("Load Balancer running on", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
