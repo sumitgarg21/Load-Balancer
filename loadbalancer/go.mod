@@ -1,6 +1,6 @@
 module github.com/sumitgarg21/smartlb
 
-go 1.25.2
+go 1.25.0
 
 require (
 	github.com/joho/godotenv v1.5.1
